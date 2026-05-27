@@ -1543,6 +1543,336 @@ eco_friendly: true
 
 ---
 
+# ⚙️ LATEST FEATURE ADDITION: SETTINGS & HELP CENTER SYSTEM
+
+Implemented two fully interactive presentation-ready screens:
+
+```txt
+app/settings.tsx
+app/help.tsx
+```
+
+This feature extends the existing Profile menu system.
+
+Previously, the Profile screen already displayed:
+
+```txt
+Settings
+Help & Support
+```
+
+but both were static menu rows.
+
+They now navigate to real interactive screens while preserving:
+
+* current Profile architecture
+* Expo Router navigation
+* dark futuristic design language
+* glassmorphism UI
+* Expo Go compatibility
+* frontend-only behavior
+
+No backend system was added.
+
+## Profile integration
+
+Enhanced:
+
+```txt
+app/(tabs)/profile.tsx
+```
+
+The Account menu now supports:
+
+| Menu item | Route |
+| --------- | ----- |
+| Settings | /settings |
+| Help & Support | /help |
+
+Added interaction polish:
+
+* press animation
+* haptic feedback
+* subtle glow feedback
+* smooth transition into new screens
+
+The existing menu structure was preserved.
+
+## Settings screen
+
+Created:
+
+```txt
+app/settings.tsx
+```
+
+The Settings screen includes:
+
+* futuristic floating header
+* animated preference cards
+* glowing toggle switches
+* local AsyncStorage persistence
+* account snapshot
+* app version card
+* partial Light Mode demo preview
+
+The UI stays consistent with the rest of Footwear:
+
+* dark background
+* neon blue/green accents
+* glass cards
+* gradient overlays
+* premium startup style
+
+## Settings preferences
+
+Implemented local settings:
+
+| Setting | Description | Persistence |
+| ------- | ----------- | ----------- |
+| Enable Notifications | Receive order updates, eco rewards, and SmartFit alerts | AsyncStorage |
+| Light Mode | Demo-only brighter visual preview | AsyncStorage |
+| Haptic Feedback | Toggle immersive touch feedback | AsyncStorage |
+
+Shared setting keys are stored in:
+
+```txt
+utils/settings.ts
+```
+
+## Notification preference integration
+
+Enhanced:
+
+```txt
+utils/notifications.ts
+```
+
+The existing Expo Notifications flow now checks:
+
+```txt
+fw_setting_notifications
+```
+
+If notifications are disabled from Settings:
+
+* order placed notification is skipped
+* scheduled order status notifications are skipped
+* no backend or remote push system is involved
+
+This keeps notification behavior frontend-only and demo-safe.
+
+## Light Mode behavior
+
+Light Mode is intentionally:
+
+* local only
+* demo only
+* partial/minimal
+
+It does NOT rewrite the full app theme.
+
+Current behavior:
+
+* brightens Settings screen cards/background
+* preserves neon accents
+* keeps the futuristic style intact
+
+This matches the project rule:
+
+> preserve the dark futuristic app identity by default.
+
+## Account snapshot
+
+The Settings screen displays user state from AppContext:
+
+```txt
+Account role
+SmartFit status
+Eco Level
+```
+
+Example:
+
+```txt
+Buyer Account
+SmartFit: Active
+Eco Level: Green Shopper
+```
+
+## App version card
+
+Added a futuristic app info card:
+
+```txt
+Footwear v1.0
+Smart Shoe Marketplace Prototype
+Expo SDK 54
+```
+
+This reinforces the presentation/demo context of the project.
+
+## Help Center screen
+
+Created:
+
+```txt
+app/help.tsx
+```
+
+The Help Center is a premium support/onboarding hub.
+
+It includes:
+
+* app introduction hero
+* How to Shop tutorial
+* Green Rewards explanation
+* SmartFit explanation
+* AR Try-On guide
+* FAQ accordion section
+* Contact Support card
+
+## Help Center sections
+
+### What is Footwear?
+
+Explains Footwear as a:
+
+* smart shoe marketplace
+* SmartFit recommendation prototype
+* pseudo AR try-on experience
+* eco commerce platform
+* SDG-12 aligned startup concept
+
+### How to Shop
+
+Tutorial-style flow:
+
+```txt
+1. Browse shoes
+2. Open product detail
+3. Scan your foot
+4. Get SmartFit matches
+5. Try AR Studio
+6. Add to cart
+7. Checkout
+```
+
+Presented using futuristic numbered cards with icons.
+
+### Green Rewards
+
+Explains:
+
+* Green Points
+* Eco Levels
+* Eco Badges
+* sustainability rewards
+* SDG-12 engagement
+
+### SmartFit Guide
+
+Clearly states:
+
+```txt
+SmartFit is simulation-based.
+It is not medical scanning.
+It is not real machine learning.
+```
+
+The explanation remains professional and presentation-friendly.
+
+### AR Try-On Guide
+
+Explains:
+
+* upload foot photo
+* drag shoe overlay
+* resize shoe
+* rotate shoe
+* save/share preview
+
+Clarifies:
+
+```txt
+AR Try-On is pseudo AR for demo purposes.
+It does not automatically detect the user's foot.
+```
+
+## FAQ accordion
+
+Implemented animated expandable FAQ cards.
+
+FAQ topics:
+
+| Question | Purpose |
+| -------- | ------- |
+| Is SmartFit real AI? | Clarifies simulation logic |
+| How are Green Points calculated? | Explains Eco Rewards |
+| Can I become a seller? | Explains seller demo flow |
+| Are payments real? | Clarifies fake checkout |
+| Does AR detect my foot automatically? | Clarifies pseudo AR |
+| Is my foot scan stored online? | Clarifies local storage |
+
+FAQ cards use:
+
+* smooth expand/collapse animation
+* haptic feedback
+* chevron rotation
+* glass card styling
+
+## Contact support card
+
+Added demo contact section:
+
+```txt
+support@footwear.app
+@footwear.id
+24/7 AI Support
+Average response time: under 2 hours
+```
+
+This is demo data only and does not connect to a real support backend.
+
+## Files changed for this feature
+
+```txt
+app/settings.tsx
+app/help.tsx
+app/_layout.tsx
+app/(tabs)/profile.tsx
+utils/settings.ts
+utils/notifications.ts
+```
+
+## How to test Settings & Help Center
+
+Run:
+
+```txt
+npx expo start
+```
+
+Then:
+
+1. Open Profile
+2. Scroll to Account menu
+3. Tap Settings
+4. Toggle notifications, light mode, and haptics
+5. Go back to Profile
+6. Tap Help & Support
+7. Expand/collapse FAQ cards
+8. Review How to Shop, Green Rewards, SmartFit, and AR Try-On guides
+
+To verify notification preference:
+
+1. Open Settings
+2. Turn off Enable Notifications
+3. Place a new order
+4. Order notification scheduling will be skipped
+
+---
+
 # ⚠️ KNOWN WARNINGS
 
 Current harmless warning:
@@ -1593,6 +1923,8 @@ NOT:
 | Seller Analytics          | ✅      |
 | Order Notifications       | ✅      |
 | Eco Rewards Gamification  | ✅      |
+| Settings Screen           | ✅      |
+| Help Center               | ✅      |
 
 Remaining intentionally skipped:
 

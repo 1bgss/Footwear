@@ -57,6 +57,55 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   return <Animated.View style={style}>{children}</Animated.View>;
 }
 
+function AnimatedMenuItem({
+  item,
+  isLast,
+  colors,
+}: {
+  item: { icon: keyof typeof Ionicons.glyphMap; label: string; desc: string; onPress: () => void };
+  isLast: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const scale = useSharedValue(1);
+  const glow = useSharedValue(0);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    backgroundColor: `rgba(0, 180, 255, ${glow.value * 0.08})`,
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync();
+          item.onPress();
+        }}
+        onPressIn={() => {
+          scale.value = withSpring(0.98, { damping: 14, stiffness: 220 });
+          glow.value = withTiming(1, { duration: 120 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 14, stiffness: 220 });
+          glow.value = withTiming(0, { duration: 220 });
+        }}
+        style={[
+          styles.menuItem,
+          !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border },
+        ]}
+      >
+        <View style={[styles.menuIcon, { backgroundColor: colors.muted }]}>
+          <Ionicons name={item.icon} size={18} color={colors.primary} />
+        </View>
+        <View style={styles.menuText}>
+          <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
+          <Text style={[styles.menuDesc, { color: colors.mutedForeground }]}>{item.desc}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -124,13 +173,13 @@ export default function ProfileScreen() {
       icon: "settings-outline" as const,
       label: "Settings",
       desc: "Preferences & notifications",
-      onPress: () => {},
+      onPress: () => router.push("/settings" as any),
     },
     {
       icon: "help-circle-outline" as const,
       label: "Help & Support",
       desc: "FAQ & contact us",
-      onPress: () => {},
+      onPress: () => router.push("/help" as any),
     },
   ];
 
@@ -408,23 +457,12 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
         <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {menuItems.map((item, i) => (
-            <Pressable
+            <AnimatedMenuItem
               key={i}
-              onPress={item.onPress}
-              style={[
-                styles.menuItem,
-                i < menuItems.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
-              ]}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: colors.muted }]}>
-                <Ionicons name={item.icon} size={18} color={colors.primary} />
-              </View>
-              <View style={styles.menuText}>
-                <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
-                <Text style={[styles.menuDesc, { color: colors.mutedForeground }]}>{item.desc}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
-            </Pressable>
+              item={item}
+              isLast={i === menuItems.length - 1}
+              colors={colors}
+            />
           ))}
         </View>
       </View>

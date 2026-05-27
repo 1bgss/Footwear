@@ -110,7 +110,7 @@ export default function OrderSuccessScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { orders, user, rewardEcoPurchase, rewardInvoiceShare } = useApp();
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [downloading, setDownloading] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);

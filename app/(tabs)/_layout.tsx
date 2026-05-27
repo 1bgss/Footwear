@@ -3,15 +3,19 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 
 export default function TabLayout() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { user, cartItems } = useApp();
   const isSeller = user?.role === "seller";
   const isWeb = Platform.OS === "web";
   const isIOS = Platform.OS === "ios";
+  const bottomInset = isWeb ? 12 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 8);
+  const tabBarHeight = (isWeb ? 84 : 64) + bottomInset;
 
   return (
     <Tabs
@@ -25,7 +29,9 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          height: isWeb ? 84 : 72,
+          height: tabBarHeight,
+          paddingBottom: bottomInset,
+          paddingTop: 8,
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -45,7 +51,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontFamily: "Inter_500Medium",
-          marginBottom: isWeb ? 0 : 4,
+          marginBottom: 0,
         },
       }}
     >

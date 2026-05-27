@@ -73,7 +73,7 @@ export default function ProfileScreen() {
     rewardEcoReorder,
   } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [reorderedId, setReorderedId] = useState<string | null>(null);
   const nextEcoTarget = getNextEcoTarget(greenPoints);

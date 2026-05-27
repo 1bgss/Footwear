@@ -35,7 +35,7 @@ export default function CheckoutScreen() {
   const [promoApplied, setPromoApplied] = useState(false);
   const [loading, setLoading] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
   const shippingFee = 5;
   const total = cartTotal + shippingFee - discount;

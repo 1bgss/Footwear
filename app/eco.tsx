@@ -94,7 +94,7 @@ export default function EcoScreen() {
   const insets = useSafeAreaInsets();
   const { greenPoints, ecoLevel, ecoBadges, ecoStats, recordEcoCollectionOpen } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
   const [activeTip, setActiveTip] = useState(0);
 
   const ecoProducts = getEcoProducts();

@@ -83,7 +83,7 @@ export default function ARTryOnScreen() {
   const insets = useSafeAreaInsets();
   const { footScanResult } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
   const initialProduct = PRODUCTS.find((p) => p.id === productId) ?? PRODUCTS[0];
   const defaultScale = getDefaultScale(footScanResult?.footType);

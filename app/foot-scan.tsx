@@ -72,7 +72,7 @@ export default function FootScanScreen() {
   const [step, setStep] = useState<"capture" | "adjust" | "result">("capture");
   const [result, setResult] = useState<FootScanResult | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
   // 4 draggable points: toe, heel, left edge, right edge
   const points = {

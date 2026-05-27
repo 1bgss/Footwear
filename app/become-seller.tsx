@@ -40,7 +40,7 @@ export default function BecomeSellerScreen() {
   const insets = useSafeAreaInsets();
   const { upgradeToSeller } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);

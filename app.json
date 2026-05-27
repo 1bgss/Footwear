@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Footwear",
+    "slug": "footwear",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "footwear",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Footwear to access your camera for AI foot scanning and AR try-on."
+      }
+    },
+
+    "android": {
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Footwear to access your camera for AI foot scanning and AR try-on."
+        }
+      ],
+
+      "expo-font",
+      "expo-web-browser",
+      "expo-asset"
+    ],
+
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

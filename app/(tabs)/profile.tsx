@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
@@ -23,22 +23,82 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
-import { useApp } from "@/context/AppContext";
+import { type OrderStatus, useApp } from "@/context/AppContext";
 import { buildInvoiceHtml } from "@/utils/invoice";
+
+const ECO_BADGE_CATALOG = [
+  { name: "Eco Explorer", icon: "leaf-outline" as const, color: "#00C878" },
+  { name: "Green Shopper", icon: "bag-check-outline" as const, color: "#00E5FF" },
+  { name: "Sustainable Supporter", icon: "earth-outline" as const, color: "#FFB800" },
+  { name: "Carbon Saver", icon: "cloud-outline" as const, color: "#00B4FF" },
+  { name: "Eco Trendsetter", icon: "share-social-outline" as const, color: "#7C3AED" },
+  { name: "Conscious Walker", icon: "footsteps-outline" as const, color: "#00C878" },
+];
+
+function getNextEcoTarget(points: number) {
+  if (points < 100) return { label: "Eco Explorer", target: 100, previous: 0 };
+  if (points < 250) return { label: "Green Shopper", target: 250, previous: 100 };
+  if (points < 500) return { label: "Sustainable Supporter", target: 500, previous: 250 };
+  if (points < 1000) return { label: "Eco Champion", target: 1000, previous: 500 };
+  return { label: "Eco Champion", target: points, previous: 1000 };
+}
+
+function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const opacity = useSharedValue(0);
+  const y = useSharedValue(18);
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 450 });
+    y.value = withSpring(0, { damping: 14, stiffness: 140 });
+  }, []);
+  const style = useAnimatedStyle(() => ({
+    opacity: delay ? opacity.value : opacity.value,
+    transform: [{ translateY: y.value }],
+  }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, orders, footScanResult, logout, reorderItems } = useApp();
+  const {
+    user,
+    orders,
+    footScanResult,
+    logout,
+    reorderItems,
+    greenPoints,
+    ecoBadges,
+    ecoLevel,
+    ecoStats,
+    rewardEcoReorder,
+  } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [reorderedId, setReorderedId] = useState<string | null>(null);
+  const nextEcoTarget = getNextEcoTarget(greenPoints);
+  const ecoProgress =
+    nextEcoTarget.target === greenPoints
+      ? 1
+      : Math.min(1, (greenPoints - nextEcoTarget.previous) / (nextEcoTarget.target - nextEcoTarget.previous));
+  const ecoFeed = [
+    ecoStats.ecoPurchases > 0 ? "Purchased eco-friendly sneakers" : "Eco wallet activated",
+    `Earned ${greenPoints} Green Points`,
+    ecoBadges.length > 0 ? `Unlocked ${ecoBadges[ecoBadges.length - 1]} Badge` : "Badges ready to unlock",
+    `Saved estimated ${ecoStats.co2Saved}kg CO2`,
+  ];
 
-  const statusColors: Record<string, string> = {
+  const statusColors: Record<OrderStatus, string> = {
     delivered: "#00C878",
+    out_for_delivery: "#00E5FF",
     shipped: "#00B4FF",
     processing: "#FFB800",
+  };
+  const statusLabels: Record<OrderStatus, string> = {
+    processing: "processing",
+    shipped: "shipped",
+    out_for_delivery: "out for delivery",
+    delivered: "delivered",
   };
 
   const menuItems = [
@@ -78,6 +138,7 @@ export default function ProfileScreen() {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
     reorderItems(order.items);
+    rewardEcoReorder(order.items);
     setReorderedId(orderId);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTimeout(() => setReorderedId(null), 2500);
@@ -160,6 +221,84 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* Green Wallet */}
+      <FadeIn>
+        <View style={[styles.greenWallet, { backgroundColor: colors.card, borderColor: colors.eco + "45" }]}>
+          <LinearGradient
+            colors={[colors.eco + "22", colors.primary + "10", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.walletTop}>
+            <View style={[styles.walletIcon, { backgroundColor: colors.eco }]}>
+              <Ionicons name="leaf" size={22} color="#000" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.walletLabel, { color: colors.mutedForeground }]}>GREEN WALLET</Text>
+              <Text style={[styles.walletLevel, { color: colors.foreground }]}>{ecoLevel}</Text>
+            </View>
+            <Text style={[styles.walletPoints, { color: colors.eco }]}>{greenPoints} GP</Text>
+          </View>
+          <View style={[styles.walletProgressTrack, { backgroundColor: colors.muted }]}>
+            <View style={[styles.walletProgressFill, { width: `${ecoProgress * 100}%`, backgroundColor: colors.eco }]} />
+          </View>
+          <Text style={[styles.walletHint, { color: colors.mutedForeground }]}>
+            {nextEcoTarget.target === greenPoints
+              ? "Top level reached"
+              : `${Math.max(0, nextEcoTarget.target - greenPoints)} points until ${nextEcoTarget.label}`}
+          </Text>
+          <View style={[styles.walletGlow, { borderColor: colors.eco + "25" }]} />
+        </View>
+      </FadeIn>
+
+      {/* Eco Badges */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Eco Badge Collection</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.badgeList}>
+          {ECO_BADGE_CATALOG.map((badge) => {
+            const unlocked = ecoBadges.includes(badge.name);
+            return (
+              <View
+                key={badge.name}
+                style={[
+                  styles.badgeCard,
+                  {
+                    backgroundColor: unlocked ? badge.color + "18" : colors.card,
+                    borderColor: unlocked ? badge.color + "65" : colors.border,
+                    opacity: unlocked ? 1 : 0.45,
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={[unlocked ? badge.color + "25" : "transparent", "transparent"]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={[styles.badgeIcon, { backgroundColor: unlocked ? badge.color : colors.muted }]}>
+                  <Ionicons name={badge.icon} size={24} color={unlocked ? "#000" : colors.mutedForeground} />
+                </View>
+                <Text style={[styles.badgeName, { color: unlocked ? colors.foreground : colors.mutedForeground }]}>
+                  {badge.name}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Eco Activity */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Eco Activity Feed</Text>
+        <View style={[styles.activityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {ecoFeed.map((item, i) => (
+            <View key={i} style={styles.activityRow}>
+              <View style={[styles.activityDot, { backgroundColor: i === 0 ? colors.eco : colors.primary }]} />
+              <Text style={[styles.activityText, { color: colors.foreground }]}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
       {/* SmartFit status */}
       {footScanResult && (
         <Pressable
@@ -207,7 +346,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.orderTotal, { color: colors.primary }]}>${order.total.toFixed(2)}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: (statusColors[order.status] ?? colors.primary) + "20" }]}>
                     <Text style={[styles.statusText, { color: statusColors[order.status] ?? colors.primary }]}>
-                      {order.status}
+                      {statusLabels[order.status] ?? order.status}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
@@ -342,4 +481,22 @@ const styles = StyleSheet.create({
   menuDesc: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   logoutBtn: { marginHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 14, borderWidth: 1, gap: 8 },
   logoutText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  greenWallet: { marginHorizontal: 20, borderRadius: 18, borderWidth: 1, padding: 18, marginBottom: 24, gap: 14, overflow: "hidden" },
+  walletTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  walletIcon: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  walletLabel: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.2 },
+  walletLevel: { fontSize: 17, fontFamily: "Inter_700Bold", marginTop: 2 },
+  walletPoints: { fontSize: 24, fontFamily: "Inter_700Bold" },
+  walletProgressTrack: { height: 9, borderRadius: 9, overflow: "hidden" },
+  walletProgressFill: { height: "100%", borderRadius: 9 },
+  walletHint: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  walletGlow: { position: "absolute", right: -24, top: -24, width: 90, height: 90, borderRadius: 45, borderWidth: 1 },
+  badgeList: { gap: 10, paddingRight: 20 },
+  badgeCard: { width: 112, borderRadius: 16, borderWidth: 1, padding: 12, alignItems: "center", gap: 8, overflow: "hidden" },
+  badgeIcon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  badgeName: { fontSize: 11, fontFamily: "Inter_700Bold", textAlign: "center", minHeight: 28 },
+  activityCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 12 },
+  activityRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  activityDot: { width: 9, height: 9, borderRadius: 5 },
+  activityText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
 });

@@ -24,7 +24,8 @@
 
     "android": {
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS"
       ]
     },
 
@@ -48,6 +49,7 @@
       ],
 
       "expo-font",
+      "expo-notifications",
       "expo-web-browser",
       "expo-asset"
     ],

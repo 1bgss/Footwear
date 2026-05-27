@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Image,
   Platform,
@@ -11,10 +11,18 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { getEcoProducts, PRODUCTS } from "@/data/products";
 import { ProductCard } from "@/components/ProductCard";
+import { useApp } from "@/context/AppContext";
 
 const SDG_GOALS = [
   {
@@ -55,14 +63,50 @@ const ECO_TIPS = [
   "Look for water-based adhesives and natural dyes",
 ];
 
+const LEADERBOARD = [
+  { name: "Alex", points: 1240, level: "Eco Champion" },
+  { name: "Sarah", points: 980, level: "Sustainable Supporter" },
+  { name: "You", points: 740, level: "Green Shopper" },
+  { name: "Budi", points: 520, level: "Sustainable Supporter" },
+];
+
+function getNextEcoTarget(points: number) {
+  if (points < 100) return { label: "Eco Explorer", target: 100, previous: 0 };
+  if (points < 250) return { label: "Green Shopper", target: 250, previous: 100 };
+  if (points < 500) return { label: "Sustainable Supporter", target: 500, previous: 250 };
+  if (points < 1000) return { label: "Eco Champion", target: 1000, previous: 500 };
+  return { label: "Eco Champion", target: points, previous: 1000 };
+}
+
+function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const opacity = useSharedValue(0);
+  const y = useSharedValue(18);
+  useEffect(() => {
+    opacity.value = withDelay(delay, withTiming(1, { duration: 450 }));
+    y.value = withDelay(delay, withSpring(0, { damping: 14, stiffness: 140 }));
+  }, []);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateY: y.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
+
 export default function EcoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { greenPoints, ecoLevel, ecoBadges, ecoStats, recordEcoCollectionOpen } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const [activeTip, setActiveTip] = useState(0);
 
   const ecoProducts = getEcoProducts();
+  const nextTarget = getNextEcoTarget(greenPoints);
+  const progress =
+    nextTarget.target === greenPoints
+      ? 1
+      : Math.min(1, (greenPoints - nextTarget.previous) / (nextTarget.target - nextTarget.previous));
+
+  useEffect(() => {
+    recordEcoCollectionOpen();
+  }, [recordEcoCollectionOpen]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -128,6 +172,95 @@ export default function EcoScreen() {
             </View>
           </View>
         </View>
+
+        {/* Eco Reward Preview */}
+        <FadeIn delay={100}>
+          <View style={[styles.rewardPreview, { backgroundColor: colors.card, borderColor: colors.eco + "45" }]}>
+            <LinearGradient
+              colors={[colors.eco + "20", colors.primary + "10", "transparent"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.rewardTop}>
+              <View style={[styles.rewardIcon, { backgroundColor: colors.eco }]}>
+                <Ionicons name="leaf" size={22} color="#000" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rewardTitle, { color: colors.foreground }]}>Eco Rewards</Text>
+                <Text style={[styles.rewardSub, { color: colors.mutedForeground }]}>Sustainability loyalty wallet</Text>
+              </View>
+              <Text style={[styles.rewardPoints, { color: colors.eco }]}>{greenPoints} GP</Text>
+            </View>
+            <View style={styles.rewardStats}>
+              <View style={styles.rewardStat}>
+                <Text style={[styles.rewardStatValue, { color: colors.foreground }]}>{ecoLevel}</Text>
+                <Text style={[styles.rewardStatLabel, { color: colors.mutedForeground }]}>Current level</Text>
+              </View>
+              <View style={[styles.rewardDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.rewardStat}>
+                <Text style={[styles.rewardStatValue, { color: colors.foreground }]}>{ecoBadges.length}/6</Text>
+                <Text style={[styles.rewardStatLabel, { color: colors.mutedForeground }]}>Badges unlocked</Text>
+              </View>
+            </View>
+            <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
+              <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: colors.eco }]} />
+            </View>
+            <Text style={[styles.rewardHint, { color: colors.mutedForeground }]}>
+              {nextTarget.target === greenPoints
+                ? "You reached the top sustainability tier"
+                : `${Math.max(0, nextTarget.target - greenPoints)} GP until ${nextTarget.label}`}
+            </Text>
+          </View>
+        </FadeIn>
+
+        {/* Sustainability Impact Card */}
+        <FadeIn delay={180}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Your Sustainability Impact</Text>
+            <View style={[styles.userImpactCard, { backgroundColor: colors.card, borderColor: colors.eco + "35" }]}>
+              <LinearGradient colors={[colors.eco + "15", "transparent"]} style={StyleSheet.absoluteFill} />
+              {[
+                { icon: "cloud-outline" as const, label: "CO2 saved", value: `${ecoStats.co2Saved}kg`, color: colors.eco },
+                { icon: "refresh-outline" as const, label: "Recycled support", value: `${ecoStats.ecoPurchases * 18}%`, color: colors.primary },
+                { icon: "leaf-outline" as const, label: "Tree equivalent", value: `${Math.max(1, Math.round(ecoStats.co2Saved / 21))}`, color: colors.gold },
+              ].map((item, i) => (
+                <View key={i} style={styles.userImpactItem}>
+                  <Ionicons name={item.icon} size={20} color={item.color} />
+                  <Text style={[styles.userImpactValue, { color: colors.foreground }]}>{item.value}</Text>
+                  <Text style={[styles.userImpactLabel, { color: colors.mutedForeground }]}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </FadeIn>
+
+        {/* Community Leaderboard */}
+        <FadeIn delay={240}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Top Green Shoppers</Text>
+            <View style={[styles.leaderboardCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {LEADERBOARD.map((member, i) => (
+                <View
+                  key={member.name}
+                  style={[
+                    styles.leaderRow,
+                    i < LEADERBOARD.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: 1 },
+                  ]}
+                >
+                  <View style={[styles.rankBadge, { backgroundColor: i === 0 ? colors.gold : colors.muted }]}>
+                    <Text style={[styles.rankText, { color: i === 0 ? "#000" : colors.foreground }]}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.leaderName, { color: colors.foreground }]}>{member.name}</Text>
+                    <Text style={[styles.leaderLevel, { color: colors.mutedForeground }]}>{member.level}</Text>
+                  </View>
+                  <Text style={[styles.leaderPoints, { color: i === 2 ? colors.eco : colors.primary }]}>{member.points} GP</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </FadeIn>
 
         {/* Impact Stats */}
         <View style={styles.section}>
@@ -344,4 +477,29 @@ const styles = StyleSheet.create({
   tipCount: { flex: 1, textAlign: "center", fontSize: 13, fontFamily: "Inter_400Regular" },
   cta: { paddingVertical: 16, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   ctaText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#000" },
+  rewardPreview: { marginHorizontal: 20, borderRadius: 20, borderWidth: 1, padding: 18, marginBottom: 22, overflow: "hidden", gap: 14 },
+  rewardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  rewardIcon: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  rewardTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  rewardSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  rewardPoints: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  rewardStats: { flexDirection: "row", alignItems: "center" },
+  rewardStat: { flex: 1 },
+  rewardStatValue: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  rewardStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  rewardDivider: { width: 1, height: 34, marginHorizontal: 14 },
+  progressTrack: { height: 8, borderRadius: 8, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 8 },
+  rewardHint: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  userImpactCard: { borderRadius: 16, borderWidth: 1, padding: 16, flexDirection: "row", overflow: "hidden" },
+  userImpactItem: { flex: 1, alignItems: "center", gap: 5 },
+  userImpactValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  userImpactLabel: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center" },
+  leaderboardCard: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
+  leaderRow: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
+  rankBadge: { width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  rankText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  leaderName: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  leaderLevel: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  leaderPoints: { fontSize: 14, fontFamily: "Inter_700Bold" },
 });

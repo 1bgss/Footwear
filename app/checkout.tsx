@@ -15,13 +15,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import {
+  scheduleOrderStatusNotifications,
+  showOrderPlacedNotification,
+} from "@/utils/notifications";
 
 type PayMethod = "ewallet" | "credit" | "transfer";
 
 export default function CheckoutScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { cartItems, cartTotal, placeOrder } = useApp();
+  const { cartItems, cartTotal, placeOrder, updateOrderStatus } = useApp();
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postal, setPostal] = useState("");
@@ -56,6 +60,10 @@ export default function CheckoutScreen() {
     setLoading(false);
     if (order) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await showOrderPlacedNotification(order.invoiceId);
+      await scheduleOrderStatusNotifications(order.id, order.invoiceId, (status) => {
+        updateOrderStatus(order.id, status);
+      });
       router.replace(`/order-success?orderId=${order.id}`);
     }
   };

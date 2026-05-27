@@ -136,8 +136,15 @@ function OrdersView() {
 
   const statusColors: Record<string, string> = {
     delivered: "#00C878",
+    out_for_delivery: "#00E5FF",
     shipped: "#00B4FF",
     processing: "#FFB800",
+  };
+  const statusLabels: Record<string, string> = {
+    delivered: "Delivered",
+    out_for_delivery: "Out for Delivery",
+    shipped: "Shipped",
+    processing: "Processing",
   };
 
   return (
@@ -171,7 +178,7 @@ function OrdersView() {
                   ]}
                 />
                 <Text style={[styles.statusText, { color: statusColors[order.status] }]}>
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  {statusLabels[order.status] ?? order.status}
                 </Text>
               </View>
             </View>

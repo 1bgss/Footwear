@@ -25,7 +25,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { useColors } from "@/hooks/useColors";
-import { useApp } from "@/context/AppContext";
+import { type OrderStatus, useApp } from "@/context/AppContext";
 import { buildInvoiceHtml } from "@/utils/invoice";
 
 function CheckmarkCircle() {
@@ -109,23 +109,43 @@ export default function OrderSuccessScreen() {
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { orders, user } = useApp();
+  const { orders, user, rewardEcoPurchase, rewardInvoiceShare } = useApp();
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [downloading, setDownloading] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState(0);
+  const rewardedOrderRef = React.useRef<string | null>(null);
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
 
   const order = orders.find((o) => o.id === orderId) ?? orders[orders.length - 1];
+  const hasEcoReward = earnedPoints > 0;
+  const statusRank: Record<OrderStatus, number> = {
+    processing: 1,
+    shipped: 2,
+    out_for_delivery: 3,
+    delivered: 4,
+  };
+  const currentStatusRank = order ? statusRank[order.status] : 1;
 
   const statusSteps = [
-    { icon: "checkmark-circle" as const, label: "Order Placed", done: true },
-    { icon: "cube-outline" as const, label: "Packing", done: false },
-    { icon: "car-outline" as const, label: "Shipped", done: false },
-    { icon: "home-outline" as const, label: "Delivered", done: false },
+    { icon: "checkmark-circle" as const, label: "Order Placed", done: currentStatusRank >= 1 },
+    { icon: "cube-outline" as const, label: "Shipped", done: currentStatusRank >= 2 },
+    { icon: "car-outline" as const, label: "Out for Delivery", done: currentStatusRank >= 3 },
+    { icon: "home-outline" as const, label: "Delivered", done: currentStatusRank >= 4 },
   ];
+
+  useEffect(() => {
+    if (!order || rewardedOrderRef.current === order.id) return;
+    rewardedOrderRef.current = order.id;
+    const points = rewardEcoPurchase(order);
+    if (points > 0) {
+      setEarnedPoints(points);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [order, rewardEcoPurchase]);
 
   const handleDownloadInvoice = async () => {
     if (!order) return;
@@ -165,6 +185,7 @@ export default function OrderSuccessScreen() {
       } else {
         Alert.alert("Share", `Invoice ID: ${order.invoiceId}\nTotal: $${order.total.toFixed(2)}\n\nShare this invoice from your Footwear app.`);
       }
+      rewardInvoiceShare();
     } catch {
       Alert.alert("Error", "Could not share invoice. Please try again.");
     } finally {
@@ -192,6 +213,27 @@ export default function OrderSuccessScreen() {
             <Text style={[styles.titleSub, { color: colors.mutedForeground }]}>Your shoes are on their way</Text>
           </View>
         </FadeIn>
+
+        {hasEcoReward && (
+          <FadeIn delay={520}>
+            <View style={[styles.rewardPopup, { backgroundColor: colors.card, borderColor: colors.eco + "55" }]}>
+              <LinearGradient
+                colors={[colors.eco + "25", colors.gold + "12", "transparent"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={[styles.rewardIcon, { backgroundColor: colors.eco }]}>
+                <Ionicons name="leaf" size={20} color="#000" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rewardTitle, { color: colors.foreground }]}>Green Reward Earned</Text>
+                <Text style={[styles.rewardDesc, { color: colors.eco }]}>+{earnedPoints} GP Added</Text>
+              </View>
+              <View style={[styles.rewardGlow, { borderColor: colors.eco + "35" }]} />
+            </View>
+          </FadeIn>
+        )}
 
         {/* Invoice Card */}
         {order && (
@@ -343,7 +385,7 @@ export default function OrderSuccessScreen() {
                 <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Order History</Text>
               </View>
             </Pressable>
-            <Pressable onPress={() => router.replace("/(tabs)/index")} style={{ flex: 1 }}>
+            <Pressable onPress={() => router.replace("/(tabs)")} style={{ flex: 1 }}>
               <LinearGradient
                 colors={[colors.primary, colors.accent]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -398,6 +440,11 @@ const styles = StyleSheet.create({
   invoiceActions: { flexDirection: "row", gap: 10 },
   invoiceBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   invoiceBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  rewardPopup: { borderRadius: 18, borderWidth: 1, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, overflow: "hidden" },
+  rewardIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  rewardTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  rewardDesc: { fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 },
+  rewardGlow: { position: "absolute", right: -18, top: -18, width: 70, height: 70, borderRadius: 35, borderWidth: 1 },
   trackCard: { borderRadius: 20, borderWidth: 1, padding: 20, gap: 16 },
   trackTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   trackSteps: { flexDirection: "row", alignItems: "flex-start" },

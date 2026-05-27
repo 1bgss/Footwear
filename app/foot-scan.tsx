@@ -66,7 +66,7 @@ function ScanningOverlay({ active }: { active: boolean }) {
 export default function FootScanScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { saveFootScanResult } = useApp();
+  const { saveFootScanResult, rewardFootScan } = useApp();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState<"capture" | "adjust" | "result">("capture");
@@ -128,6 +128,7 @@ export default function FootScanScreen() {
     };
 
     await saveFootScanResult(scanResult);
+    rewardFootScan();
     setResult(scanResult);
     setStep("result");
     setScanning(false);

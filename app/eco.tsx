@@ -92,12 +92,12 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 export default function EcoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { greenPoints, ecoLevel, ecoBadges, ecoStats, recordEcoCollectionOpen } = useApp();
+  const { greenPoints, ecoLevel, ecoBadges, ecoStats, recordEcoCollectionOpen, sellerProducts } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
   const [activeTip, setActiveTip] = useState(0);
 
-  const ecoProducts = getEcoProducts();
+  const ecoProducts = getEcoProducts(sellerProducts);
   const nextTarget = getNextEcoTarget(greenPoints);
   const progress =
     nextTarget.target === greenPoints

@@ -21,7 +21,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
-import { PRODUCTS, getSmartFitScore, getFootTypeLabel, ActivityType } from "@/data/products";
+import { PRODUCTS, getSmartFitScore, getFootTypeLabel, ActivityType, getAllProducts } from "@/data/products";
 
 function ScoreBar({ score, delay = 0 }: { score: number; delay?: number }) {
   const colors = useColors();
@@ -78,7 +78,7 @@ const counterStyles = StyleSheet.create({
 export default function SmartFitResultScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { footScanResult } = useApp();
+  const { footScanResult, sellerProducts } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
@@ -107,7 +107,10 @@ export default function SmartFitResultScreen() {
   const footTypeColors = { narrow: colors.accent, normal: colors.eco, wide: colors.gold };
   const accentColor = footTypeColors[footType] ?? colors.primary;
 
-  const scoredProducts = PRODUCTS.map((p) => ({
+  // Use getAllProducts to include seller products in SmartFit recommendations
+  const allProducts = getAllProducts(sellerProducts);
+
+  const scoredProducts = allProducts.map((p) => ({
     product: p,
     score: getSmartFitScore(p, footType, true, p.activity_type as ActivityType),
   })).sort((a, b) => b.score - a.score);

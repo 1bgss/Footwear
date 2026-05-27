@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
-import { PRODUCTS, getSmartFitScore, ActivityType } from "@/data/products";
+import { PRODUCTS, getSmartFitScore, ActivityType, getAllProducts } from "@/data/products";
 
 function MetaBadge({ label, value, color }: { label: string; value: string; color?: string }) {
   const colors = useColors();
@@ -37,14 +37,16 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addToCart, footScanResult } = useApp();
+  const { addToCart, footScanResult, sellerProducts } = useApp();
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
   const [activeImg, setActiveImg] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
-  const product = PRODUCTS.find((p) => p.id === id);
+  // Use getAllProducts to include seller products in product lookup
+  const allProducts = getAllProducts(sellerProducts);
+  const product = allProducts.find((p) => p.id === id);
   if (!product) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>

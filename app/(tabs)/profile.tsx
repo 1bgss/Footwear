@@ -25,6 +25,7 @@ import Animated, {
 import { useColors } from "@/hooks/useColors";
 import { type OrderStatus, useApp } from "@/context/AppContext";
 import { buildInvoiceHtml } from "@/utils/invoice";
+import { getAllProducts } from "@/data/products";
 
 const ECO_BADGE_CATALOG = [
   { name: "Eco Explorer", icon: "leaf-outline" as const, color: "#00C878" },
@@ -120,6 +121,8 @@ export default function ProfileScreen() {
     ecoLevel,
     ecoStats,
     rewardEcoReorder,
+    sellerStores,
+    sellerProducts,
   } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
@@ -136,6 +139,10 @@ export default function ProfileScreen() {
     ecoBadges.length > 0 ? `Unlocked ${ecoBadges[ecoBadges.length - 1]} Badge` : "Badges ready to unlock",
     `Saved estimated ${ecoStats.co2Saved}kg CO2`,
   ];
+
+  // Get seller store for current user
+  const sellerStore = sellerStores.find((s) => s.ownerUserId === user?.id);
+  const storeProducts = sellerProducts.filter((p) => p.storeId === sellerStore?.id);
 
   const statusColors: Record<OrderStatus, string> = {
     delivered: "#00C878",
@@ -370,6 +377,68 @@ export default function ProfileScreen() {
         </Pressable>
       )}
 
+      {/* Seller Dashboard */}
+      {user?.role === "seller" && sellerStore && (
+        <FadeIn>
+          <View style={[styles.sellerCard, { backgroundColor: colors.card, borderColor: colors.gold + "40" }]}>
+            <LinearGradient
+              colors={[colors.gold + "18", colors.primary + "10", "transparent"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.sellerHeader}>
+              <View style={[styles.sellerIcon, { backgroundColor: colors.gold }]}>
+                <Ionicons name="storefront" size={24} color="#000" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sellerTitle, { color: colors.foreground }]}>Your Store</Text>
+                <Text style={[styles.sellerName, { color: colors.gold }]}>{sellerStore.name}</Text>
+              </View>
+            </View>
+            <View style={styles.sellerStats}>
+              <View style={styles.sellerStat}>
+                <Text style={[styles.sellerStatValue, { color: colors.foreground }]}>{storeProducts.length}</Text>
+                <Text style={[styles.sellerStatLabel, { color: colors.mutedForeground }]}>Products</Text>
+              </View>
+              <View style={[styles.sellerStatDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.sellerStat}>
+                <Text style={[styles.sellerStatValue, { color: colors.foreground }]}>{sellerStore.totalSales}</Text>
+                <Text style={[styles.sellerStatLabel, { color: colors.mutedForeground }]}>Sales</Text>
+              </View>
+              <View style={[styles.sellerStatDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.sellerStat}>
+                <Text style={[styles.sellerStatValue, { color: colors.foreground }]}>{sellerStore.rating}</Text>
+                <Text style={[styles.sellerStatLabel, { color: colors.mutedForeground }]}>Rating</Text>
+              </View>
+            </View>
+            <View style={styles.sellerActions}>
+              <Pressable
+                onPress={() => router.push("/upload-product")}
+                style={[styles.sellerActionBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}
+              >
+                <Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />
+                <Text style={[styles.sellerActionText, { color: colors.primary }]}>Upload Product</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/store/${sellerStore.id}` as any)}
+                style={[styles.sellerActionBtn, { backgroundColor: colors.gold + "15", borderColor: colors.gold + "30" }]}
+              >
+                <Ionicons name="storefront-outline" size={18} color={colors.gold} />
+                <Text style={[styles.sellerActionText, { color: colors.gold }]}>View Storefront</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push("/become-seller")}
+                style={[styles.sellerActionBtn, { backgroundColor: colors.eco + "15", borderColor: colors.eco + "30" }]}
+              >
+                <Ionicons name="settings-outline" size={18} color={colors.eco} />
+                <Text style={[styles.sellerActionText, { color: colors.eco }]}>Manage Store</Text>
+              </Pressable>
+            </View>
+          </View>
+        </FadeIn>
+      )}
+
       {/* Order History */}
       {orders.length > 0 && (
         <View style={styles.section}>
@@ -496,6 +565,19 @@ const styles = StyleSheet.create({
   fitValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", marginTop: 2 },
   fitScore: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   fitScoreText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#000" },
+  sellerCard: { marginHorizontal: 20, borderRadius: 18, borderWidth: 1, padding: 18, marginBottom: 24, overflow: "hidden" },
+  sellerHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
+  sellerIcon: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  sellerTitle: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  sellerName: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 2 },
+  sellerStats: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  sellerStat: { flex: 1, alignItems: "center" },
+  sellerStatValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  sellerStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  sellerStatDivider: { width: 1, height: 32 },
+  sellerActions: { gap: 8 },
+  sellerActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 12, borderWidth: 1, gap: 8 },
+  sellerActionText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   section: { paddingHorizontal: 20, marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 12 },
   orderCardWrap: { borderRadius: 14, borderWidth: 1, marginBottom: 10, overflow: "hidden" },

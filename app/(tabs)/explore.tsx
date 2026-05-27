@@ -21,21 +21,24 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
-import { PRODUCTS, CATEGORIES } from "@/data/products";
+import { PRODUCTS, CATEGORIES, getAllProducts } from "@/data/products";
 import { SELLER_ANALYTICS } from "@/data/analytics";
 import { ProductCard } from "@/components/ProductCard";
 
 function ExploreView() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useApp();
+  const { user, sellerProducts } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
+  // Use getAllProducts to include seller products in search/filter
+  const allProducts = getAllProducts(sellerProducts);
+
   const filtered = useMemo(() => {
-    return PRODUCTS.filter((p) => {
+    return allProducts.filter((p) => {
       const matchQuery =
         !query ||
         p.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -43,7 +46,7 @@ function ExploreView() {
       const matchCategory = selectedCategory === "All" || p.category === selectedCategory;
       return matchQuery && matchCategory;
     });
-  }, [query, selectedCategory]);
+  }, [query, selectedCategory, sellerProducts]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

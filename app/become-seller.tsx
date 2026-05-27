@@ -1,14 +1,18 @@
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
+  Image,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import Animated, {
@@ -22,46 +26,98 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 
-const BENEFITS = [
-  { icon: "trending-up-outline" as const, label: "Earn Revenue", desc: "Get paid instantly for every sale", color: "#00B4FF" },
-  { icon: "analytics-outline" as const, label: "Live Analytics", desc: "Real-time dashboard & insights", color: "#7C3AED" },
-  { icon: "scan-outline" as const, label: "SmartFit AI", desc: "AI drives 2.4× more conversions", color: "#00C878" },
-  { icon: "leaf-outline" as const, label: "Eco Marketplace", desc: "Tap the growing eco-shopper market", color: "#00C878" },
-];
-
-const STATS = [
-  { value: "5,200+", label: "Active Sellers" },
-  { value: "$2.4M", label: "Monthly GMV" },
-  { value: "94%", label: "Seller Satisfaction" },
-];
+const STORE_CATEGORIES = ["Running", "Casual", "Sport", "Hiking", "Formal", "Streetwear"];
+const BRAND_STYLES = ["Sporty", "Streetwear", "Minimal", "Outdoor", "Eco Lifestyle"];
 
 export default function BecomeSellerScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { upgradeToSeller } = useApp();
+  const { user, createSellerStore, upgradeToSeller } = useApp();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : Math.max(insets.bottom, Platform.OS === "android" ? 24 : 0);
 
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [storeName, setStoreName] = useState("");
+  const [storeUsername, setStoreUsername] = useState("");
+  const [ownerName, setOwnerName] = useState(user?.name || "");
+  const [storeDescription, setStoreDescription] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedBrandStyle, setSelectedBrandStyle] = useState("");
+  const [isEcoCertified, setIsEcoCertified] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [logoUri, setLogoUri] = useState<string | null>(null);
+  const [bannerUri, setBannerUri] = useState<string | null>(null);
 
   const btnScale = useSharedValue(1);
   const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
 
-  const handleOpenStore = async () => {
-    if (loading || success) return;
+  const pickImage = async (isLogo: boolean) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: isLogo ? [1, 1] : [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        if (isLogo) {
+          setLogoUri(result.assets[0].uri);
+        } else {
+          setBannerUri(result.assets[0].uri);
+        }
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!storeName || !storeUsername || !ownerName || !storeDescription || !storeAddress || !city || !selectedCategory || !selectedBrandStyle || !phone) {
+      Alert.alert("Missing Fields", "Please fill in all required fields");
+      return;
+    }
+
+    if (!user) {
+      Alert.alert("Error", "Please log in first");
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setLoading(true);
     btnScale.value = withSequence(withTiming(0.94, { duration: 100 }), withSpring(1, { damping: 10 }));
 
-    await new Promise((r) => setTimeout(r, 1600));
-    await upgradeToSeller();
-    setLoading(false);
-    setSuccess(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      await createSellerStore({
+        ownerUserId: user.id,
+        name: storeName,
+        username: storeUsername,
+        ownerName,
+        description: storeDescription,
+        address: storeAddress,
+        city,
+        category: selectedCategory,
+        brandStyle: selectedBrandStyle,
+        contact: phone,
+        instagram: instagram || undefined,
+        isEcoCertified,
+        logoUri: logoUri || undefined,
+        bannerUri: bannerUri || undefined,
+      });
 
-    await new Promise((r) => setTimeout(r, 2000));
-    router.back();
+      await upgradeToSeller();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      await new Promise((r) => setTimeout(r, 500));
+      router.replace("/(tabs)");
+    } catch (error) {
+      Alert.alert("Error", "Failed to create store");
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,6 +135,8 @@ export default function BecomeSellerScreen() {
         >
           <Ionicons name="close" size={20} color={colors.foreground} />
         </Pressable>
+        <Text style={[styles.title, { color: colors.foreground }]}>Create Your Store</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -87,154 +145,249 @@ export default function BecomeSellerScreen() {
       >
         {/* Hero */}
         <View style={styles.hero}>
-          <LinearGradient
-            colors={[colors.gold + "28", colors.primary + "18", "transparent"]}
-            style={styles.heroBg}
-          />
           <View style={[styles.heroIcon, { backgroundColor: colors.gold + "22", borderColor: colors.gold + "40" }]}>
             <Ionicons name="storefront" size={44} color={colors.gold} />
           </View>
-          <Text style={[styles.heroTitle, { color: colors.foreground }]}>Become a Seller</Text>
+          <Text style={[styles.heroTitle, { color: colors.foreground }]}>Seller Onboarding</Text>
           <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>
-            Join thousands of UMKM sellers growing their business on Footwear's smart marketplace
+            Set up your store and start selling on Footwear
           </Text>
-
-          <View style={styles.statsRow}>
-            {STATS.map((s, i) => (
-              <View key={i} style={[styles.statItem, i === 1 && { borderLeftWidth: 1, borderRightWidth: 1, borderColor: colors.border }]}>
-                <Text style={[styles.statValue, { color: colors.foreground }]}>{s.value}</Text>
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
         </View>
 
-        {/* Benefits */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Why Sell on Footwear?</Text>
-          <View style={styles.benefitsGrid}>
-            {BENEFITS.map((b, i) => (
-              <View key={i} style={[styles.benefitCard, { backgroundColor: colors.card, borderColor: b.color + "35" }]}>
-                <LinearGradient colors={[b.color + "18", "transparent"]} style={StyleSheet.absoluteFill} />
-                <View style={[styles.benefitIcon, { backgroundColor: b.color + "22" }]}>
-                  <Ionicons name={b.icon} size={22} color={b.color} />
-                </View>
-                <Text style={[styles.benefitLabel, { color: colors.foreground }]}>{b.label}</Text>
-                <Text style={[styles.benefitDesc, { color: colors.mutedForeground }]}>{b.desc}</Text>
-              </View>
-            ))}
+        {/* Form */}
+        <View style={styles.form}>
+          {/* Store Name */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Name *</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Enter store name"
+              placeholderTextColor={colors.mutedForeground}
+              value={storeName}
+              onChangeText={setStoreName}
+            />
           </View>
-        </View>
 
-        {/* Analytics Preview */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Your Future Dashboard</Text>
-          <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <LinearGradient colors={[colors.primary + "12", "transparent"]} style={StyleSheet.absoluteFill} />
+          {/* Store Username */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Username *</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="@storename"
+              placeholderTextColor={colors.mutedForeground}
+              value={storeUsername}
+              onChangeText={setStoreUsername}
+              autoCapitalize="none"
+            />
+          </View>
 
-            <View style={styles.previewKpis}>
-              {[
-                { label: "Revenue", val: "$2.4k", color: colors.primary },
-                { label: "Orders", val: "148", color: colors.eco },
-                { label: "Conversion", val: "8.3%", color: colors.gold },
-              ].map((k, i) => (
-                <View key={i} style={[styles.previewKpi, { borderColor: k.color + "30", backgroundColor: k.color + "08" }]}>
-                  <Text style={[styles.previewKpiVal, { color: k.color }]}>{k.val}</Text>
-                  <Text style={[styles.previewKpiLabel, { color: colors.mutedForeground }]}>{k.label}</Text>
-                </View>
+          {/* Owner Name */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Owner Name *</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Your name"
+              placeholderTextColor={colors.mutedForeground}
+              value={ownerName}
+              onChangeText={setOwnerName}
+            />
+          </View>
+
+          {/* Store Description */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Description *</Text>
+            <TextInput
+              style={[styles.textArea, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Describe your store..."
+              placeholderTextColor={colors.mutedForeground}
+              value={storeDescription}
+              onChangeText={setStoreDescription}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Address */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Address *</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Street address"
+              placeholderTextColor={colors.mutedForeground}
+              value={storeAddress}
+              onChangeText={setStoreAddress}
+            />
+          </View>
+
+          {/* City */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>City *</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="City"
+              placeholderTextColor={colors.mutedForeground}
+              value={city}
+              onChangeText={setCity}
+            />
+          </View>
+
+          {/* Store Category */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Category *</Text>
+            <View style={styles.chipsContainer}>
+              {STORE_CATEGORIES.map((cat) => (
+                <Pressable
+                  key={cat}
+                  onPress={() => setSelectedCategory(cat)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: selectedCategory === cat ? colors.primary : colors.card,
+                      borderColor: selectedCategory === cat ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: selectedCategory === cat ? "#000" : colors.mutedForeground },
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </Pressable>
               ))}
             </View>
+          </View>
 
-            <View style={styles.previewChart}>
-              {[35, 55, 45, 70, 60, 100].map((h, i) => (
-                <View key={i} style={styles.previewBarWrap}>
-                  <View
-                    style={[styles.previewBar, { height: h * 0.65, backgroundColor: i === 5 ? colors.primary : colors.primary + "40" }]}
-                  />
-                </View>
+          {/* Brand Style */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Brand Style *</Text>
+            <View style={styles.chipsContainer}>
+              {BRAND_STYLES.map((style) => (
+                <Pressable
+                  key={style}
+                  onPress={() => setSelectedBrandStyle(style)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: selectedBrandStyle === style ? colors.primary : colors.card,
+                      borderColor: selectedBrandStyle === style ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: selectedBrandStyle === style ? "#000" : colors.mutedForeground },
+                    ]}
+                  >
+                    {style}
+                  </Text>
+                </Pressable>
               ))}
             </View>
-            <Text style={[styles.previewLabel, { color: colors.mutedForeground }]}>Monthly Revenue — Last 6 months</Text>
-
-            <View style={[styles.lockedOverlay, { backgroundColor: "rgba(10,10,15,0.58)" }]}>
-              <View style={[styles.lockedBadge, { backgroundColor: colors.gold + "22", borderColor: colors.gold + "35" }]}>
-                <Ionicons name="lock-closed" size={15} color={colors.gold} />
-                <Text style={[styles.lockedText, { color: colors.gold }]}>Full dashboard unlocked after opening store</Text>
-              </View>
-            </View>
           </View>
-        </View>
 
-        {/* Revenue Card */}
-        <View style={styles.section}>
-          <View style={[styles.revenueCard, { backgroundColor: colors.card, borderColor: colors.eco + "30" }]}>
-            <LinearGradient colors={[colors.eco + "15", "transparent"]} style={StyleSheet.absoluteFill} />
-            <View style={styles.revenueRow}>
-              <View style={[styles.revenueIcon, { backgroundColor: colors.eco + "22" }]}>
-                <Ionicons name="cash-outline" size={26} color={colors.eco} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.revenueTitle, { color: colors.foreground }]}>
-                  Top sellers earn{" "}
-                  <Text style={{ color: colors.eco }}>$8,000+</Text> per month
-                </Text>
-                <Text style={[styles.revenueSub, { color: colors.mutedForeground }]}>
-                  SmartFit recommendations boost conversions by 2.4× compared to traditional stores
-                </Text>
-              </View>
-            </View>
+          {/* Eco Certified */}
+          <View style={[styles.field, styles.row]}>
+            <Text style={[styles.label, { color: colors.foreground, flex: 1 }]}>Eco Certified Store</Text>
+            <Pressable
+              onPress={() => setIsEcoCertified(!isEcoCertified)}
+              style={[
+                styles.toggle,
+                { backgroundColor: isEcoCertified ? colors.eco : colors.muted, borderColor: isEcoCertified ? colors.eco : colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.toggleDot,
+                  { backgroundColor: isEcoCertified ? "#000" : colors.mutedForeground, transform: [{ translateX: isEcoCertified ? 20 : 0 }] },
+                ]}
+              />
+            </Pressable>
           </View>
-        </View>
 
-        {/* Testimonial */}
-        <View style={styles.section}>
-          <View style={[styles.testimonialCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.quoteIcon}>
-              <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={[styles.quoteText, { color: colors.foreground }]}>
-              "Footwear's SmartFit drove 40% more conversions for my shoe store in the first month alone."
-            </Text>
-            <Text style={[styles.quoteAuthor, { color: colors.mutedForeground }]}>
-              — Ahmad R., UrbanKicks Store · Jakarta
-            </Text>
+          {/* Phone */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Phone / WhatsApp *</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="+62..."
+              placeholderTextColor={colors.mutedForeground}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
           </View>
-        </View>
 
-        {/* CTA */}
-        <View style={[styles.section, { paddingTop: 4 }]}>
+          {/* Instagram */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Instagram Handle</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="@username"
+              placeholderTextColor={colors.mutedForeground}
+              value={instagram}
+              onChangeText={setInstagram}
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Logo Image */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Logo</Text>
+            <Pressable onPress={() => pickImage(true)} style={[styles.imageUpload, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {logoUri ? (
+                <Image source={{ uri: logoUri }} style={styles.uploadedImage} />
+              ) : (
+                <View style={styles.uploadPlaceholder}>
+                  <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
+                  <Text style={[styles.uploadText, { color: colors.mutedForeground }]}>Tap to upload logo</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Banner Image */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Store Banner</Text>
+            <Pressable onPress={() => pickImage(false)} style={[styles.imageUpload, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {bannerUri ? (
+                <Image source={{ uri: bannerUri }} style={styles.uploadedImageBanner} />
+              ) : (
+                <View style={styles.uploadPlaceholder}>
+                  <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
+                  <Text style={[styles.uploadText, { color: colors.mutedForeground }]}>Tap to upload banner</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Submit Button */}
           <Animated.View style={btnStyle}>
-            <Pressable onPress={handleOpenStore} disabled={loading || success}>
+            <Pressable onPress={handleSubmit} disabled={loading}>
               <LinearGradient
-                colors={
-                  success ? [colors.eco, "#00D084"] :
-                  loading ? [colors.gold + "80", "#CC7000"] :
-                  [colors.gold, "#FF8C00"]
-                }
+                colors={loading ? [colors.gold + "80", "#CC7000"] : [colors.gold, "#FF8C00"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={styles.ctaBtn}
+                style={styles.submitBtn}
               >
-                {success ? (
-                  <>
-                    <Ionicons name="checkmark-circle" size={24} color="#000" />
-                    <Text style={styles.ctaBtnText}>Store Opened! Welcome, Seller 🎉</Text>
-                  </>
-                ) : loading ? (
+                {loading ? (
                   <>
                     <Ionicons name="hourglass-outline" size={20} color="#000" />
-                    <Text style={styles.ctaBtnText}>Setting up your store…</Text>
+                    <Text style={styles.submitBtnText}>Creating store...</Text>
                   </>
                 ) : (
                   <>
                     <Ionicons name="storefront-outline" size={22} color="#000" />
-                    <Text style={styles.ctaBtnText}>Open Your Store — Free</Text>
+                    <Text style={styles.submitBtnText}>Create Store & Start Selling</Text>
                   </>
                 )}
               </LinearGradient>
             </Pressable>
           </Animated.View>
-          <Text style={[styles.ctaNote, { color: colors.mutedForeground }]}>
-            Free to join · No monthly fees · Start selling in minutes
+          <Text style={[styles.note, { color: colors.mutedForeground }]}>
+            By creating a store, you agree to our seller terms and conditions
           </Text>
         </View>
       </ScrollView>
@@ -244,58 +397,55 @@ export default function BecomeSellerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  topBar: { paddingHorizontal: 20, paddingBottom: 8, alignItems: "flex-end" },
-  closeBtn: { width: 42, height: 42, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  hero: { alignItems: "center", paddingHorizontal: 24, paddingBottom: 28, overflow: "hidden" },
-  heroBg: { position: "absolute", top: 0, left: 0, right: 0, height: 260 },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingBottom: 8 },
+  closeBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  hero: { alignItems: "center", paddingHorizontal: 24, paddingBottom: 24, overflow: "hidden" },
   heroIcon: {
-    width: 90, height: 90, borderRadius: 28,
+    width: 80, height: 80, borderRadius: 24,
     borderWidth: 1.5, alignItems: "center", justifyContent: "center",
     marginBottom: 16, marginTop: 8,
   },
-  heroTitle: { fontSize: 30, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 10 },
-  heroSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, marginBottom: 24 },
-  statsRow: { flexDirection: "row", width: "100%" },
-  statItem: { flex: 1, alignItems: "center", paddingVertical: 14 },
-  statValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  statLabel: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3 },
-  section: { paddingHorizontal: 20, marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 14 },
-  benefitsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  benefitCard: {
-    width: "47.5%", borderRadius: 16, borderWidth: 1,
-    padding: 16, gap: 8, overflow: "hidden",
+  heroTitle: { fontSize: 26, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 8 },
+  heroSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  form: { paddingHorizontal: 20, gap: 16 },
+  field: { gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  label: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  input: {
+    borderRadius: 12, borderWidth: 1, padding: 14,
+    fontSize: 15, fontFamily: "Inter_400Regular",
   },
-  benefitIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  benefitLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  benefitDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  previewCard: { borderRadius: 18, borderWidth: 1, padding: 18, overflow: "hidden", gap: 14 },
-  previewKpis: { flexDirection: "row", gap: 8 },
-  previewKpi: { flex: 1, borderRadius: 10, borderWidth: 1, padding: 10, alignItems: "center", gap: 4 },
-  previewKpiVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  previewKpiLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  previewChart: { flexDirection: "row", alignItems: "flex-end", height: 65, gap: 5 },
-  previewBarWrap: { flex: 1, justifyContent: "flex-end", alignItems: "center" },
-  previewBar: { width: "100%", borderRadius: 4 },
-  previewLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  lockedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
+  textArea: {
+    borderRadius: 12, borderWidth: 1, padding: 14,
+    fontSize: 15, fontFamily: "Inter_400Regular",
+    minHeight: 80, textAlignVertical: "top",
   },
-  lockedBadge: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
-  lockedText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  revenueCard: { borderRadius: 16, borderWidth: 1, padding: 18, overflow: "hidden" },
-  revenueRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-  revenueIcon: { width: 50, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  revenueTitle: { fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 24, marginBottom: 6 },
-  revenueSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  testimonialCard: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 12 },
-  quoteIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  quoteText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 22, fontStyle: "italic" },
-  quoteAuthor: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  ctaBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: 16, gap: 10 },
-  ctaBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#000" },
-  ctaNote: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 12 },
+  chipsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    borderWidth: 1,
+  },
+  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  toggle: {
+    width: 48, height: 28, borderRadius: 14,
+    borderWidth: 1, padding: 2,
+  },
+  toggleDot: {
+    width: 22, height: 22, borderRadius: 11,
+  },
+  imageUpload: {
+    borderRadius: 12, borderWidth: 1, overflow: "hidden",
+    height: 120, alignItems: "center", justifyContent: "center",
+  },
+  uploadedImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  uploadedImageBanner: { width: "100%", height: "100%", resizeMode: "cover" },
+  uploadPlaceholder: { alignItems: "center", gap: 8 },
+  uploadText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  submitBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 16, borderRadius: 14, gap: 10, marginTop: 8,
+  },
+  submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#000" },
+  note: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8 },
 });

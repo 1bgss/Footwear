@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { Product } from "@/data/products";
+import { Product, SellerStore, SellerProduct } from "@/data/products";
 
 export type UserRole = "buyer" | "seller";
 export type OrderStatus = "processing" | "shipped" | "out_for_delivery" | "delivered";
@@ -59,6 +59,8 @@ interface AppContextType {
   ecoBadges: string[];
   ecoLevel: string;
   ecoStats: EcoStats;
+  sellerStores: SellerStore[];
+  sellerProducts: SellerProduct[];
   completeOnboarding: () => void;
   login: (name: string, email: string, role: UserRole) => void;
   logout: () => void;
@@ -78,6 +80,9 @@ interface AppContextType {
   rewardInvoiceShare: () => void;
   rewardFootScan: () => void;
   rewardEcoReorder: (items: CartItem[]) => void;
+  createSellerStore: (storeData: Omit<SellerStore, "id" | "createdAt" | "totalProducts" | "totalSales" | "rating">) => Promise<SellerStore>;
+  uploadSellerProduct: (productData: Omit<SellerProduct, "id" | "isSellerProduct">) => Promise<SellerProduct>;
+  getSellerStoreByUserId: (userId: string) => SellerStore | null;
   cartTotal: number;
 }
 
@@ -93,6 +98,8 @@ const STORAGE_KEYS = {
   ECO_BADGES: "fw_eco_badges",
   ECO_STATS: "fw_eco_stats",
   ECO_REWARDED_ORDERS: "fw_eco_rewarded_orders",
+  SELLER_STORES: "fw_seller_stores",
+  SELLER_PRODUCTS: "fw_seller_products",
 };
 
 const INITIAL_ECO_STATS: EcoStats = {
@@ -130,6 +137,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ecoLevel, setEcoLevel] = useState(getEcoLevel(0));
   const [ecoStats, setEcoStats] = useState<EcoStats>(INITIAL_ECO_STATS);
   const [rewardedEcoOrders, setRewardedEcoOrders] = useState<string[]>([]);
+  const [sellerStores, setSellerStores] = useState<SellerStore[]>([]);
+  const [sellerProducts, setSellerProducts] = useState<SellerProduct[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const persistOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
@@ -155,6 +164,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           storedEcoBadges,
           storedEcoStats,
           storedRewardedEcoOrders,
+          storedSellerStores,
+          storedSellerProducts,
         ] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.ONBOARDED),
           AsyncStorage.getItem(STORAGE_KEYS.USER),
@@ -165,6 +176,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(STORAGE_KEYS.ECO_BADGES),
           AsyncStorage.getItem(STORAGE_KEYS.ECO_STATS),
           AsyncStorage.getItem(STORAGE_KEYS.ECO_REWARDED_ORDERS),
+          AsyncStorage.getItem(STORAGE_KEYS.SELLER_STORES),
+          AsyncStorage.getItem(STORAGE_KEYS.SELLER_PRODUCTS),
         ]);
         if (onboarded) setIsOnboarded(true);
         if (userData) setUser(JSON.parse(userData));
@@ -181,6 +194,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setEcoStats({ ...INITIAL_ECO_STATS, ...JSON.parse(storedEcoStats) });
         }
         if (storedRewardedEcoOrders) setRewardedEcoOrders(JSON.parse(storedRewardedEcoOrders));
+        if (storedSellerStores) setSellerStores(JSON.parse(storedSellerStores));
+        if (storedSellerProducts) setSellerProducts(JSON.parse(storedSellerProducts));
       } catch {}
       setLoaded(true);
     };
@@ -420,6 +435,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEYS.FOOT_SCAN, JSON.stringify(result));
   }, []);
 
+  const createSellerStore = useCallback(async (storeData: Omit<SellerStore, "id" | "createdAt" | "totalProducts" | "totalSales" | "rating">): Promise<SellerStore> => {
+    const newStore: SellerStore = {
+      ...storeData,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+      totalProducts: 0,
+      totalSales: 0,
+      rating: 4.5,
+    };
+    setSellerStores((prev) => {
+      const updated = [...prev, newStore];
+      AsyncStorage.setItem(STORAGE_KEYS.SELLER_STORES, JSON.stringify(updated));
+      return updated;
+    });
+    return newStore;
+  }, []);
+
+  const uploadSellerProduct = useCallback(async (productData: Omit<SellerProduct, "id" | "isSellerProduct">): Promise<SellerProduct> => {
+    const newProduct: SellerProduct = {
+      ...productData,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      isSellerProduct: true,
+    };
+    setSellerProducts((prev) => {
+      const updated = [...prev, newProduct];
+      AsyncStorage.setItem(STORAGE_KEYS.SELLER_PRODUCTS, JSON.stringify(updated));
+      
+      // Update store's total product count
+      setSellerStores((stores) => {
+        const updatedStores = stores.map((store) =>
+          store.id === newProduct.storeId
+            ? { ...store, totalProducts: store.totalProducts + 1 }
+            : store
+        );
+        AsyncStorage.setItem(STORAGE_KEYS.SELLER_STORES, JSON.stringify(updatedStores));
+        return updatedStores;
+      });
+      
+      return updated;
+    });
+    return newProduct;
+  }, []);
+
+  const getSellerStoreByUserId = useCallback((userId: string): SellerStore | null => {
+    return sellerStores.find((store) => store.ownerUserId === userId) || null;
+  }, [sellerStores]);
+
   const cartTotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
 
   if (!loaded) return null;
@@ -436,6 +498,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ecoBadges,
         ecoLevel,
         ecoStats,
+        sellerStores,
+        sellerProducts,
         completeOnboarding,
         login,
         logout,
@@ -455,6 +519,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         rewardInvoiceShare,
         rewardFootScan,
         rewardEcoReorder,
+        createSellerStore,
+        uploadSellerProduct,
+        getSellerStoreByUserId,
         cartTotal,
       }}
     >

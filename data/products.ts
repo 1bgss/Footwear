@@ -1,8 +1,8 @@
 export type FitType = "narrow" | "normal" | "wide";
-export type ActivityType = "running" | "casual" | "sport" | "hiking" | "formal";
-export type StyleType = "sporty" | "elegant" | "minimalist" | "streetwear";
+export type ActivityType = "running" | "casual" | "sport" | "hiking" | "formal" | "streetwear";
+export type StyleType = "sporty" | "elegant" | "minimalist" | "streetwear" | "outdoor" | "eco_lifestyle";
 export type MaterialType = "recycled" | "vegan" | "leather" | "knit";
-export type CushioningType = "soft" | "medium" | "hard";
+export type CushioningType = "soft" | "medium" | "hard" | "firm";
 export type ComfortLevel = "low" | "medium" | "high";
 
 export interface Product {
@@ -30,6 +30,35 @@ export interface Product {
   cushioning: CushioningType;
   isNew?: boolean;
   isFeatured?: boolean;
+}
+
+export interface SellerStore {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  username: string;
+  ownerName: string;
+  address: string;
+  city: string;
+  description: string;
+  category: string;
+  brandStyle: string;
+  contact: string;
+  instagram?: string;
+  isEcoCertified: boolean;
+  logoUri?: string;
+  bannerUri?: string;
+  createdAt: string;
+  totalProducts: number;
+  totalSales: number;
+  rating: number;
+}
+
+export interface SellerProduct extends Product {
+  sellerId: string;
+  storeId: string;
+  isSellerProduct: true;
+  imageUri?: string;
 }
 
 const shoe1 = require("../assets/images/shoe1.png");
@@ -373,10 +402,23 @@ export function getSmartFitScore(
   return Math.max(0, Math.min(100, score));
 }
 
-export function getEcoProducts(): Product[] {
-  return PRODUCTS.filter((p) => p.eco_friendly);
+export function getEcoProducts(sellerProducts: SellerProduct[] = []): Product[] {
+  const allProducts = getAllProducts(sellerProducts);
+  return allProducts.filter((p) => p.eco_friendly);
 }
 
 export function getFootTypeLabel(type: FitType): string {
   return { narrow: "Narrow Foot", normal: "Normal Foot", wide: "Wide Foot" }[type];
+}
+
+// Helper functions for merging seller data with static data
+// These will be called with seller data from AppContext
+export function getAllProducts(sellerProducts: SellerProduct[] = []): Product[] {
+  return [...PRODUCTS, ...sellerProducts];
+}
+
+export function getAllBrands(sellerStores: SellerStore[] = []): string[] {
+  const staticBrands = [...BRANDS];
+  const sellerBrandNames = sellerStores.map((store) => store.name);
+  return [...staticBrands, ...sellerBrandNames];
 }

@@ -73,7 +73,7 @@ export function buildInvoiceHtml(order: Order, user: User | null): string {
 <body>
   <div class="header">
     <div>
-      <div class="brand">&#128705; FOOTWEAR</div>
+      <div class="brand">&#128095; FOOTWEAR</div>
       <div class="brand-sub">Smart Shoe Marketplace</div>
     </div>
     <div class="invoice-meta">

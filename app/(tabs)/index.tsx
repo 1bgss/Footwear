@@ -25,7 +25,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { ProductCard } from "@/components/ProductCard";
-import { PRODUCTS, CATEGORIES, BRANDS, getEcoProducts } from "@/data/products";
+import { PRODUCTS, CATEGORIES, BRANDS, getEcoProducts, getAllProducts } from "@/data/products";
 import { useApp } from "@/context/AppContext";
 
 const FEATURED = PRODUCTS.filter((p) => p.isFeatured);
@@ -66,6 +66,7 @@ function AnimatedHeader({ scrollY }: { scrollY: Animated.SharedValue<number> }) 
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { sellerStores, sellerProducts } = useApp();
   const [activeCategory, setActiveCategory] = useState("All");
   const scrollY = useSharedValue(0);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -75,10 +76,16 @@ export default function HomeScreen() {
     scrollY.value = e.contentOffset.y;
   });
 
+  // Merge seller products with static products
+  const allProducts = getAllProducts(sellerProducts);
+
   const filteredProducts =
     activeCategory === "All"
-      ? PRODUCTS
-      : PRODUCTS.filter((p) => p.category === activeCategory);
+      ? allProducts
+      : allProducts.filter((p) => p.category === activeCategory);
+
+  // Merge seller stores with static brands
+  const allBrands = [...BRANDS, ...sellerStores.map((s) => s.name)];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -216,18 +223,48 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.brands}
         >
-          {BRANDS.map((brand) => (
-            <Pressable
-              key={brand}
-              onPress={() => router.push("/(tabs)/explore")}
-              style={[styles.brandCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <View style={[styles.brandIcon, { backgroundColor: colors.primary + "20" }]}>
-                <Ionicons name="storefront-outline" size={20} color={colors.primary} />
-              </View>
-              <Text style={[styles.brandName, { color: colors.foreground }]}>{brand}</Text>
-            </Pressable>
-          ))}
+          {allBrands.map((brand) => {
+            const isSellerStore = sellerStores.some((s) => s.name === brand);
+            const store = sellerStores.find((s) => s.name === brand);
+            return (
+              <Pressable
+                key={brand}
+                onPress={() => {
+                  if (isSellerStore && store) {
+                    router.push(`/store/${store.id}` as any);
+                  } else {
+                    router.push("/(tabs)/explore");
+                  }
+                }}
+                style={[
+                  styles.brandCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: isSellerStore ? colors.gold : colors.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.brandIcon,
+                    { backgroundColor: isSellerStore ? colors.gold + "20" : colors.primary + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name={isSellerStore ? "storefront" : "storefront-outline"}
+                    size={20}
+                    color={isSellerStore ? colors.gold : colors.primary}
+                  />
+                </View>
+                <Text style={[styles.brandName, { color: colors.foreground }]}>{brand}</Text>
+                {isSellerStore && (
+                  <View style={[styles.sellerBadge, { backgroundColor: colors.gold + "20" }]}>
+                    <Text style={[styles.sellerBadgeText, { color: colors.gold }]}>Seller</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
         {/* Eco Section */}
@@ -339,7 +376,7 @@ const styles = StyleSheet.create({
   brands: { paddingHorizontal: 20, paddingBottom: 24, gap: 12 },
   brandCard: {
     alignItems: "center",
-    padding: 16,
+    padding: 25,
     borderRadius: 16,
     borderWidth: 1,
     gap: 8,
@@ -347,6 +384,8 @@ const styles = StyleSheet.create({
   },
   brandIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   brandName: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  sellerBadge: { position: "absolute", top: +3, right: +5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  sellerBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold" },
   ecoHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

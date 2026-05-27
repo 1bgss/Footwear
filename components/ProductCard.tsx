@@ -30,11 +30,14 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
     setLiked((v) => !v);
   };
 
+  // Support both require() format and URI format for seller products
+  const imageSource = typeof product.image === 'string' ? { uri: product.image } : product.image;
+
   if (compact) {
     return (
       <Animated.View style={animStyle}>
         <Pressable onPress={handlePress} style={[styles.compactCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Image source={product.image} style={styles.compactImage} />
+          <Image source={imageSource} style={styles.compactImage} />
           <View style={styles.compactInfo}>
             <Text style={[styles.compactBrand, { color: colors.mutedForeground }]}>{product.brand}</Text>
             <Text style={[styles.compactName, { color: colors.foreground }]} numberOfLines={1}>{product.name}</Text>
@@ -49,7 +52,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
     <Animated.View style={animStyle}>
       <Pressable onPress={handlePress} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.imageContainer}>
-          <Image source={product.image} style={styles.image} />
+          <Image source={imageSource} style={styles.image} />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.6)"]}
             style={StyleSheet.absoluteFill}

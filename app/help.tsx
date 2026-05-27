@@ -102,7 +102,7 @@ export default function HelpScreen() {
         <FadeIn>
           <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
             <LinearGradient colors={[colors.primary + "18", colors.eco + "10"]} style={StyleSheet.absoluteFill} />
-            <Ionicons name="help-buoy-outline" size={36} color={colors.primary} />
+            <Ionicons name="footsteps-outline" size={36} color={colors.primary} />
             <Text style={[styles.heroTitle, { color: colors.foreground }]}>What is Footwear?</Text>
             <Text style={[styles.heroDesc, { color: colors.mutedForeground }]}>
               Footwear is a smart shoe marketplace prototype combining SmartFit recommendations, pseudo AR try-on, eco commerce, seller analytics, and SDG-12 engagement.
@@ -198,8 +198,23 @@ const styles = StyleSheet.create({
   heroDesc: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
   section: { paddingHorizontal: 20, marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 12 },
-  stepGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  stepCard: { width: "47%", minHeight: 118, borderRadius: 16, borderWidth: 1, padding: 14, gap: 9 },
+  
+  // 🔧 PERBAIKAN DI SINI: stepGrid & stepCard
+  stepGrid: { 
+    flexDirection: "row", 
+    flexWrap: "wrap", 
+    gap: 12,  // 🔧 gap sedikit lebih lega
+  },
+  stepCard: { 
+    flex: 1,           // 🔧 KUNCI: bagi ruang secara adil
+    minWidth: "48%",   // 🔧 batas minimal ~setengah layar
+    minHeight: 118, 
+    borderRadius: 16, 
+    borderWidth: 1, 
+    padding: 14, 
+    gap: 9 
+  },
+  
   stepNum: { width: 26, height: 26, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   stepNumText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#000" },
   stepTitle: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 18 },

@@ -1873,6 +1873,505 @@ To verify notification preference:
 
 ---
 
+# 🤖 LATEST FEATURE ADDITION: SHOEPEDIA AI VISION
+
+Implemented a new AI Vision feature called:
+
+```txt
+Shoepedia AI
+```
+
+Shoepedia turns Footwear into a:
+
+> “Smart Marketplace + AI Shoe Knowledge Platform”
+
+The feature allows users to:
+
+* take a shoe photo
+* upload a shoe image from gallery
+* send the image to Google AI Studio Gemini Vision
+* identify the shoe type/category
+* estimate brand and model when possible
+* generate educational shoe information
+* save analysis results locally as history
+
+This feature preserves the current architecture:
+
+* Expo Router
+* AppContext
+* AsyncStorage
+* frontend-only app flow
+* Expo Go compatibility
+* dark futuristic glassmorphism design
+
+It does NOT add:
+
+* backend server
+* Supabase
+* Firebase
+* CMS
+* vector database
+* product database changes
+* RAG system
+* cloud image storage
+
+## Navigation integration
+
+Shoepedia is accessible from:
+
+```txt
+Profile
+→ Account
+→ Shoepedia
+```
+
+Profile now includes a new Account menu item:
+
+```txt
+Shoepedia
+AI shoe encyclopedia
+```
+
+Routing:
+
+```txt
+/shoepedia
+```
+
+The route is registered in:
+
+```txt
+app/_layout.tsx
+```
+
+The screen file is:
+
+```txt
+app/shoepedia.tsx
+```
+
+## User flow
+
+Implemented flow:
+
+```txt
+Profile
+→ Shoepedia
+→ Take Photo / Upload Image
+→ Gemini Vision Analysis
+→ Shoepedia Result
+→ Save to Recent Analyses
+```
+
+The screen starts with a futuristic hero card that explains the feature and shows:
+
+* number of saved analyses
+* saved history count
+* Vision mode indicator
+
+Users can choose:
+
+* Take Photo
+* Upload Image
+
+Both use:
+
+```txt
+expo-image-picker
+```
+
+The selected image is stored only as a local URI.
+
+IMPORTANT:
+
+The app does not upload the image to cloud storage.
+
+The image is converted to base64 only temporarily to send a single Gemini request, then the stored history keeps only:
+
+```ts
+imageUri
+```
+
+## Gemini integration
+
+Shoepedia uses Google AI Studio Gemini Vision through a frontend REST request.
+
+Current model:
+
+```txt
+gemini-2.5-flash
+```
+
+Endpoint:
+
+```txt
+https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+```
+
+The API key is read from:
+
+```txt
+EXPO_PUBLIC_GEMINI_API_KEY
+```
+
+IMPORTANT:
+
+The key is NOT hardcoded in source code.
+
+Use:
+
+```txt
+.env
+```
+
+Example:
+
+```env
+EXPO_PUBLIC_GEMINI_API_KEY=your_google_ai_studio_key_here
+```
+
+The project also includes:
+
+```txt
+.env.example
+```
+
+That file is only a template.
+
+Expo does NOT read `.env.example` as a runtime environment file.
+
+If the app shows:
+
+```txt
+Gemini API key is not configured.
+```
+
+Then create or update:
+
+```txt
+.env
+```
+
+Then restart Expo with:
+
+```txt
+npx expo start -c
+```
+
+## AI response format
+
+Gemini is instructed to return valid structured JSON.
+
+Expected fields:
+
+```ts
+{
+  shoe_type: string;
+  shoe_category: string;
+  brand: string | null;
+  model: string | null;
+  primary_color: string;
+  secondary_color: string | null;
+  gender_target: string | null;
+  usage: string[];
+  confidence: number;
+  description: string;
+  characteristics: string[];
+  history: string;
+  care_tips: string[];
+  estimated_price_range: string | null;
+  interesting_facts: string[];
+  similar_shoes: string[];
+}
+```
+
+If Gemini is unsure, the prompt tells it to use:
+
+```txt
+null
+```
+
+for unknown brand/model/fields.
+
+If no shoe is detected, Gemini is instructed to return:
+
+```txt
+shoe_type: "not_a_shoe"
+shoe_category: "not_shoe"
+confidence: 0
+```
+
+The app then shows:
+
+```txt
+No shoe detected.
+Please upload a shoe image.
+```
+
+## Result screen
+
+After a successful analysis, Shoepedia displays:
+
+* shoe image
+* brand
+* model
+* confidence score
+* description
+* history
+* characteristics
+* care tips
+* estimated price range
+* usage
+* interesting facts
+* similar shoes
+
+Each content section uses:
+
+```txt
+GlassCard
+```
+
+The UI follows the same design system as Foot Scan, AR Try-On, Eco Collection, Settings, and Help Center:
+
+* `#0A0A0F` background
+* glassmorphism cards
+* neon blue accents
+* blur panels
+* floating card layout
+* premium startup aesthetic
+* Reanimated motion
+
+## Loading experience
+
+While Gemini analyzes the image, Shoepedia displays a futuristic loading view with:
+
+* animated scan frame
+* grid overlay
+* moving scan line
+* glowing border animation
+* animated progress bar
+* rotating status text
+
+Loading text sequence:
+
+```txt
+Analyzing Shoe Structure...
+Identifying Brand...
+Generating Shoe History...
+Building Shoepedia Knowledge...
+```
+
+This is implemented using:
+
+```txt
+React Native Reanimated
+```
+
+## History system
+
+Shoepedia includes local history persistence.
+
+Storage:
+
+```txt
+AsyncStorage
+```
+
+Storage key:
+
+```txt
+fw_shoepedia_history
+```
+
+Stored shape:
+
+```ts
+{
+  id: string;
+  imageUri: string;
+  analyzedAt: string;
+  result: ShoepediaResult;
+}
+```
+
+History is shown on the Shoepedia screen as:
+
+```txt
+Recent Analyses
+```
+
+Users can:
+
+* open old analysis results
+* view saved image previews
+* see brand/model summary
+* see confidence score
+* delete one analysis from the result screen
+* clear all Shoepedia history
+
+History is limited to:
+
+```txt
+20 latest items
+```
+
+Shoepedia history is global/local app history and is not cleared on logout, matching the requested behavior.
+
+## AppContext additions
+
+Extended:
+
+```txt
+context/AppContext.tsx
+```
+
+Added types:
+
+```ts
+ShoepediaResult
+ShoepediaHistoryEntry
+```
+
+Added state:
+
+```ts
+shoepediaHistory: ShoepediaHistoryEntry[]
+```
+
+Added methods:
+
+```ts
+addShoepediaEntry()
+removeShoepediaEntry()
+clearShoepediaHistory()
+```
+
+The AppContext was extended minimally.
+
+It was NOT replaced or restructured.
+
+Existing systems remain untouched:
+
+* SmartFit
+* Seller Marketplace
+* Seller Product Upload
+* Eco Rewards
+* Notifications
+* Settings
+* Help Center
+* Cart & Checkout
+* Product System
+
+## Error handling
+
+Implemented error states:
+
+### Missing API key
+
+Shown when:
+
+```txt
+EXPO_PUBLIC_GEMINI_API_KEY
+```
+
+is not available at runtime.
+
+Message:
+
+```txt
+Gemini API key is not configured.
+Set EXPO_PUBLIC_GEMINI_API_KEY and restart Expo.
+```
+
+### AI request failure
+
+Shown when Gemini request fails, rate limits, network fails, or invalid JSON is returned.
+
+Message:
+
+```txt
+Unable to analyze this shoe.
+Try another image with better lighting.
+```
+
+### No shoe detected
+
+Shown when Gemini determines the uploaded image is not footwear.
+
+Message:
+
+```txt
+No shoe detected.
+Try another image with better lighting.
+```
+
+## Files changed for this feature
+
+```txt
+app/shoepedia.tsx
+app/_layout.tsx
+app/(tabs)/profile.tsx
+context/AppContext.tsx
+components/GlassCard.tsx
+.env.example
+```
+
+## How to test Shoepedia AI
+
+Create:
+
+```txt
+.env
+```
+
+Add:
+
+```env
+EXPO_PUBLIC_GEMINI_API_KEY=your_google_ai_studio_key_here
+```
+
+Restart Expo:
+
+```txt
+npx expo start -c
+```
+
+Then:
+
+1. Open Profile
+2. Scroll to Account
+3. Tap Shoepedia
+4. Tap Upload Image or Take Photo
+5. Choose a clear shoe image
+6. Wait for Gemini analysis
+7. Review Shoepedia Result
+8. Return and check Recent Analyses
+9. Tap old history item to reopen result
+10. Clear history if needed
+
+Recommended demo image:
+
+* a single shoe or sneaker
+* good lighting
+* minimal background clutter
+* shoe fully visible in frame
+
+## Free tier notes
+
+Google AI Studio free tier can fail when:
+
+* API key is missing or not loaded
+* Expo was not restarted after editing `.env`
+* quota is exceeded
+* request rate is too high
+* network is unavailable
+* image is too large or unclear
+* Gemini returns invalid JSON
+
+The app handles these cases with UI-level error cards and does not block navigation.
+
+---
+
 # ⚠️ KNOWN WARNINGS
 
 Current harmless warning:
@@ -1925,6 +2424,7 @@ NOT:
 | Eco Rewards Gamification  | ✅      |
 | Settings Screen           | ✅      |
 | Help Center               | ✅      |
+| Shoepedia AI Vision       | ✅      |
 
 Remaining intentionally skipped:
 
@@ -1952,3 +2452,34 @@ NOT:
 * production realism
 * backend complexity
 * real AI engineering
+
+added new feature :
+
+Seller Onboarding & Product Ecosystem - COMPLETED
+
+Data Layer (data/products.ts):
+Added SellerStore and SellerProduct interfaces
+Added getAllProducts() and getAllBrands() helper functions
+Modified getEcoProducts() to accept sellerProducts parameter
+AppContext (context/AppContext.tsx):
+Extended with sellerStores and sellerProducts state
+AsyncStorage persistence with keys fw_seller_stores and fw_seller_products
+Added methods: createSellerStore(), uploadSellerProduct(), getSellerStoreByUserId()
+UI Components:
+ProductCard.tsx: Supports both require() and URI image formats
+become-seller.tsx: Full onboarding form with store details, image picking, validation
+upload-product.tsx: Product upload with selectable metadata and image picker
+store/[id].tsx: Dynamic seller storefront with hero, product grid, analytics
+Home Page ([c:/Users/LENOVO/Downloads/footwear (1)/footwear/app/(tabs)/index.tsx](cci:4://file://c:/Users/LENOVO/Downloads/footwear (1)/footwear/app/(tabs)/index.tsx:0:0-0:0)):
+Merged seller stores with static BRANDS in Local Brands section
+Routing: static brands → Explore, seller stores → /store/[id]
+Uses getAllProducts() for product filtering
+Profile Page ([c:/Users/LENOVO/Downloads/footwear (1)/footwear/app/(tabs)/profile.tsx](cci:4://file://c:/Users/LENOVO/Downloads/footwear (1)/footwear/app/(tabs)/profile.tsx:0:0-0:0)):
+Added seller dashboard with store stats
+Action buttons: Upload Product, View Storefront, Manage Store
+Product Screens (all modified to use merged data):
+smartfit-result.tsx: Uses getAllProducts() for recommendations
+explore.tsx: Uses getAllProducts() for search/filter
+eco.tsx: Uses getEcoProducts(sellerProducts)
+product/[id].tsx: Uses getAllProducts() for product lookup
+Seller-created products and stores are now seamlessly integrated with the existing marketplace while maintaining compatibility with all core features (SmartFit, Explore, Home, Eco Collection, Cart, Checkout).

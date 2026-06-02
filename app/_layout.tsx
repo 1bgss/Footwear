@@ -30,6 +30,7 @@ function RootLayoutNav() {
       <Stack.Screen name="checkout" options={{ presentation: "card" }} />
       <Stack.Screen name="order-success" options={{ presentation: "modal", gestureEnabled: false }} />
       <Stack.Screen name="eco" options={{ presentation: "card" }} />
+      <Stack.Screen name="shoepedia" options={{ presentation: "card" }} />
       <Stack.Screen name="become-seller" options={{ presentation: "modal" }} />
       <Stack.Screen name="settings" options={{ presentation: "card" }} />
       <Stack.Screen name="help" options={{ presentation: "card" }} />

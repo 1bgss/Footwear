@@ -1,11 +1,11 @@
 import { BlurView } from "expo-blur";
 import React from "react";
-import { Platform, StyleSheet, View, ViewStyle } from "react-native";
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
 interface GlassCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   intensity?: number;
   tint?: "dark" | "light" | "extraLight" | "prominent" | "systemUltraThinMaterial" | "systemThinMaterial" | "systemMaterial" | "systemThickMaterial" | "systemChromeMaterial" | "systemUltraThinMaterialLight" | "systemThinMaterialLight" | "systemMaterialLight" | "systemThickMaterialLight" | "systemChromeMaterialLight" | "systemUltraThinMaterialDark" | "systemThinMaterialDark" | "systemMaterialDark" | "systemThickMaterialDark" | "systemChromeMaterialDark" | "default";
 }

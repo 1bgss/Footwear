@@ -171,6 +171,12 @@ export default function ProfileScreen() {
       onPress: () => router.push("/eco"),
     },
     {
+      icon: "sparkles-outline" as const,
+      label: "Shoepedia",
+      desc: "AI shoe encyclopedia",
+      onPress: () => router.push("/shoepedia" as any),
+    },
+    {
       icon: "storefront-outline" as const,
       label: user?.isSeller ? "Seller Dashboard" : "Become a Seller",
       desc: user?.isSeller ? "Manage your store" : "Open your store today",

@@ -42,6 +42,32 @@ export interface FootScanResult {
   imageUri?: string;
 }
 
+export interface ShoepediaResult {
+  shoe_type: string;
+  shoe_category: string;
+  brand: string | null;
+  model: string | null;
+  primary_color: string;
+  secondary_color: string | null;
+  gender_target: string | null;
+  usage: string[];
+  confidence: number;
+  description: string;
+  characteristics: string[];
+  history: string;
+  care_tips: string[];
+  estimated_price_range: string | null;
+  interesting_facts: string[];
+  similar_shoes: string[];
+}
+
+export interface ShoepediaHistoryEntry {
+  id: string;
+  imageUri: string;
+  analyzedAt: string;
+  result: ShoepediaResult;
+}
+
 export interface EcoStats {
   ecoPurchases: number;
   co2Saved: number;
@@ -55,6 +81,7 @@ interface AppContextType {
   cartItems: CartItem[];
   orders: Order[];
   footScanResult: FootScanResult | null;
+  shoepediaHistory: ShoepediaHistoryEntry[];
   greenPoints: number;
   ecoBadges: string[];
   ecoLevel: string;
@@ -72,6 +99,9 @@ interface AppContextType {
   placeOrder: (address: string, paymentMethod: string, discount?: number) => Order | null;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   saveFootScanResult: (result: FootScanResult) => void;
+  addShoepediaEntry: (entry: Omit<ShoepediaHistoryEntry, "id" | "analyzedAt">) => Promise<ShoepediaHistoryEntry>;
+  removeShoepediaEntry: (id: string) => void;
+  clearShoepediaHistory: () => Promise<void>;
   addGreenPoints: (points: number) => void;
   unlockEcoBadge: (badge: string) => void;
   calculateEcoLevel: () => string;
@@ -94,6 +124,7 @@ const STORAGE_KEYS = {
   CART: "fw_cart",
   ORDERS: "fw_orders",
   FOOT_SCAN: "fw_foot_scan",
+  SHOEPEDIA_HISTORY: "fw_shoepedia_history",
   GREEN_POINTS: "fw_green_points",
   ECO_BADGES: "fw_eco_badges",
   ECO_STATS: "fw_eco_stats",
@@ -132,6 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [footScanResult, setFootScanResult] = useState<FootScanResult | null>(null);
+  const [shoepediaHistory, setShoepediaHistory] = useState<ShoepediaHistoryEntry[]>([]);
   const [greenPoints, setGreenPoints] = useState(0);
   const [ecoBadges, setEcoBadges] = useState<string[]>([]);
   const [ecoLevel, setEcoLevel] = useState(getEcoLevel(0));
@@ -160,6 +192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           cartData,
           ordersData,
           footData,
+          shoepediaData,
           storedGreenPoints,
           storedEcoBadges,
           storedEcoStats,
@@ -172,6 +205,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(STORAGE_KEYS.CART),
           AsyncStorage.getItem(STORAGE_KEYS.ORDERS),
           AsyncStorage.getItem(STORAGE_KEYS.FOOT_SCAN),
+          AsyncStorage.getItem(STORAGE_KEYS.SHOEPEDIA_HISTORY),
           AsyncStorage.getItem(STORAGE_KEYS.GREEN_POINTS),
           AsyncStorage.getItem(STORAGE_KEYS.ECO_BADGES),
           AsyncStorage.getItem(STORAGE_KEYS.ECO_STATS),
@@ -184,6 +218,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (cartData) setCartItems(JSON.parse(cartData));
         if (ordersData) setOrders(JSON.parse(ordersData));
         if (footData) setFootScanResult(JSON.parse(footData));
+        if (shoepediaData) setShoepediaHistory(JSON.parse(shoepediaData));
         if (storedGreenPoints) {
           const parsedPoints = Number(storedGreenPoints);
           setGreenPoints(parsedPoints);
@@ -435,6 +470,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEYS.FOOT_SCAN, JSON.stringify(result));
   }, []);
 
+  const addShoepediaEntry = useCallback(async (entry: Omit<ShoepediaHistoryEntry, "id" | "analyzedAt">): Promise<ShoepediaHistoryEntry> => {
+    const newEntry: ShoepediaHistoryEntry = {
+      ...entry,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      analyzedAt: new Date().toISOString(),
+    };
+    setShoepediaHistory((prev) => {
+      const updated = [newEntry, ...prev].slice(0, 20);
+      AsyncStorage.setItem(STORAGE_KEYS.SHOEPEDIA_HISTORY, JSON.stringify(updated));
+      return updated;
+    });
+    return newEntry;
+  }, []);
+
+  const removeShoepediaEntry = useCallback((id: string) => {
+    setShoepediaHistory((prev) => {
+      const updated = prev.filter((entry) => entry.id !== id);
+      AsyncStorage.setItem(STORAGE_KEYS.SHOEPEDIA_HISTORY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const clearShoepediaHistory = useCallback(async () => {
+    setShoepediaHistory([]);
+    await AsyncStorage.removeItem(STORAGE_KEYS.SHOEPEDIA_HISTORY);
+  }, []);
+
   const createSellerStore = useCallback(async (storeData: Omit<SellerStore, "id" | "createdAt" | "totalProducts" | "totalSales" | "rating">): Promise<SellerStore> => {
     const newStore: SellerStore = {
       ...storeData,
@@ -494,6 +556,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         cartItems,
         orders,
         footScanResult,
+        shoepediaHistory,
         greenPoints,
         ecoBadges,
         ecoLevel,
@@ -511,6 +574,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         placeOrder,
         updateOrderStatus,
         saveFootScanResult,
+        addShoepediaEntry,
+        removeShoepediaEntry,
+        clearShoepediaHistory,
         addGreenPoints,
         unlockEcoBadge,
         calculateEcoLevel,
